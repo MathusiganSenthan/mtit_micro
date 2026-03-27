@@ -42,13 +42,17 @@ _HOP_BY_HOP = frozenset(
 )
 
 
-async def _proxy(request: Request, target_base: str) -> Response:
+async def _proxy(
+    request: Request,
+    target_base: str,
+    forward_path: str | None = None,
+) -> Response:
     """
     Forward the incoming request to the target service, preserving
     method, headers, body, and query params.
     """
     # Strip the first path segment (the prefix) and forward the rest
-    path = request.url.path
+    path = forward_path if forward_path is not None else request.url.path
     query = request.url.query
     url = f"{target_base}{path}"
     if query:
@@ -90,11 +94,50 @@ async def _proxy(request: Request, target_base: str) -> Response:
 
 
 def _make_route(prefix: str, base_url: str):
-    """Register catch-all GET/POST/PUT/PATCH/DELETE routes for a prefix."""
+    """Register proxy routes for a service prefix (including root path)."""
+
+    @router.get(
+        f"{prefix}/docs",
+        tags=[prefix.strip("/")],
+        name=f"proxy_docs_{prefix.strip('/')}",
+    )
+    async def proxy_docs(request: Request):
+        return await _proxy(request, base_url, "/docs")
+
+    @router.get(
+        f"{prefix}/openapi.json",
+        tags=[prefix.strip("/")],
+        name=f"proxy_openapi_{prefix.strip('/')}",
+    )
+    async def proxy_openapi(request: Request):
+        return await _proxy(request, base_url, "/openapi.json")
+
+    @router.get(
+        f"{prefix}/redoc",
+        tags=[prefix.strip("/")],
+        name=f"proxy_redoc_{prefix.strip('/')}",
+    )
+    async def proxy_redoc(request: Request):
+        return await _proxy(request, base_url, "/redoc")
+
+    @router.api_route(
+        f"{prefix}",
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+        tags=[prefix.strip("/")],
+        name=f"proxy_root_{prefix.strip('/')}",
+    )
+    @router.api_route(
+        f"{prefix}/",
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+        tags=[prefix.strip("/")],
+        name=f"proxy_root_slash_{prefix.strip('/')}",
+    )
+    async def proxy_root(request: Request):
+        return await _proxy(request, base_url)
 
     @router.api_route(
         f"{prefix}/{{path:path}}",
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
         tags=[prefix.strip("/")],
         name=f"proxy_{prefix.strip('/')}",
     )
@@ -104,3 +147,57 @@ def _make_route(prefix: str, base_url: str):
 
 for _prefix, _url in SERVICE_MAP.items():
     _make_route(_prefix, _url)
+
+
+@router.get("/gateway/services", tags=["gateway"])
+async def list_services():
+    return {
+        "services": [
+            {"prefix": prefix, "url": url} for prefix, url in SERVICE_MAP.items()
+        ]
+    }
+
+
+@router.get("/gateway/health", tags=["gateway"])
+async def gateway_health():
+    statuses = []
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for prefix, url in SERVICE_MAP.items():
+            health_url = f"{url}/health"
+            try:
+                r = await client.get(health_url)
+                statuses.append(
+                    {
+                        "service": prefix,
+                        "url": url,
+                        "status_code": r.status_code,
+                        "healthy": r.status_code < 400,
+                    }
+                )
+            except httpx.HTTPError:
+                statuses.append(
+                    {
+                        "service": prefix,
+                        "url": url,
+                        "status_code": None,
+                        "healthy": False,
+                    }
+                )
+
+    all_healthy = all(item["healthy"] for item in statuses)
+    return {"healthy": all_healthy, "services": statuses}
+
+
+@router.get("/gateway/docs", tags=["gateway"])
+async def docs_index():
+    docs = []
+    for prefix, url in SERVICE_MAP.items():
+        docs.append(
+            {
+                "service": prefix.strip("/"),
+                "direct_docs": f"{url}/docs",
+                "gateway_docs": f"{prefix}/docs",
+                "gateway_openapi": f"{prefix}/openapi.json",
+            }
+        )
+    return {"docs": docs}

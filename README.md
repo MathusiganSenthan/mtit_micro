@@ -13,10 +13,11 @@ Client
         ├── user-service  :8002   (user profiles)
         ├── product-service :8003 (book catalog)
         ├── order-service :8004   (place & track orders)
-        └── notification-service :8005 (email alerts, logs)
+  ├── notification-service :8005 (email alerts, logs)
+  └── feedback-service :8006 (ratings and reviews)
 ```
 
-Each service has its **own PostgreSQL database** and shares only the `SECRET_KEY` for JWT verification.
+Each service has its own database and shares only the `SECRET_KEY` for JWT verification.
 
 ---
 
@@ -30,17 +31,20 @@ Each service has its **own PostgreSQL database** and shares only the `SECRET_KEY
 | product-service       | 8003 | product_db      | Book catalog, stock management        |
 | order-service         | 8004 | order_db        | Place orders, status transitions      |
 | notification-service  | 8005 | notification_db | Email notifications, audit log        |
+| feedback-service      | 8006 | feedback_db     | Ratings and product feedback          |
 
 ---
 
 ## Prerequisites
 
 - Python 3.11+
-- PostgreSQL running locally
+- PostgreSQL running locally (optional for local demo)
 
 ---
 
 ## Database Setup
+
+### Option A: PostgreSQL (production-like)
 
 Create one database per service in PostgreSQL:
 
@@ -50,13 +54,23 @@ CREATE DATABASE user_db;
 CREATE DATABASE product_db;
 CREATE DATABASE order_db;
 CREATE DATABASE notification_db;
+CREATE DATABASE feedback_db;
+```
+
+### Option B: SQLite (quick local setup)
+
+For a laptop demo, each service can use local SQLite without installing PostgreSQL.
+This repository already supports SQLite URLs like:
+
+```env
+DATABASE_URL=sqlite:///./auth_db.db
 ```
 
 ---
 
 ## Environment Variables
 
-Each service has a `.env` file. Update all of them with your actual values:
+Each service has a `.env` file. You can copy each `.env.example` and adjust values:
 
 ```
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/<service_db>
@@ -98,13 +112,37 @@ cd notification-service
 pip install -r requirements.txt
 uvicorn app.main:app --port 8005 --reload
 
-# 6. API Gateway (start last)
+# 6. Feedback Service
+cd feedback-service
+pip install -r requirements.txt
+uvicorn app.main:app --port 8006 --reload
+
+# 7. API Gateway (start last)
 cd api-gateway
 pip install -r requirements.txt
 uvicorn app.main:app --port 8000 --reload
 ```
 
+### Windows one-command start/stop
+
+```powershell
+./scripts/run-all.ps1
+./scripts/stop-all.ps1
+```
+
 Tables are created automatically on first startup via `Base.metadata.create_all()`.
+
+---
+
+## Gateway Utility Endpoints
+
+These endpoints help with assignment demo screenshots and environment checks.
+
+| Method | Path                 | Description                                      |
+|--------|----------------------|--------------------------------------------------|
+| GET    | /gateway/services    | Shows registered service prefixes and base URLs  |
+| GET    | /gateway/health      | Aggregated health status across all services     |
+| GET    | /gateway/docs        | Direct docs and gateway docs URLs per service    |
 
 ---
 
