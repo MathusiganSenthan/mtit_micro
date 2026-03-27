@@ -49,4 +49,4 @@ htmlcov/
 *.sqlite3
 
 # Local evidence captures
-screenshots/
+screenshots
