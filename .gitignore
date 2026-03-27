@@ -47,3 +47,6 @@ htmlcov/
 # Local databases
 *.db
 *.sqlite3
+
+# Local evidence captures
+screenshots/
