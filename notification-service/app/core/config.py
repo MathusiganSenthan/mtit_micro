@@ -2,8 +2,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
-    SECRET_KEY: str
+    DATABASE_URL: str = "sqlite:///./notification_db.db"
+    SECRET_KEY: str = "dev-shared-secret-change-me"
     ALGORITHM: str = "HS256"
 
     SMTP_HOST: str = "smtp.mailtrap.io"

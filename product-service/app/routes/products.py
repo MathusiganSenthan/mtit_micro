@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.core.database import get_db
-from app.dependencies import get_current_user_id
+from app.dependencies import get_current_user_id, get_current_user_or_internal
 from app.schemas.product import (
     ProductCreateRequest,
     ProductUpdateRequest,
@@ -67,7 +67,7 @@ def update_stock(
     product_id: str,
     data: StockAdjustRequest,
     db: Session = Depends(get_db),
-    _: str = Depends(get_current_user_id),
+    _: str = Depends(get_current_user_or_internal),
 ):
     return adjust_stock(product_id, data, db)
 

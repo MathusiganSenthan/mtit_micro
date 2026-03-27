@@ -48,6 +48,7 @@ def _deduct_stock(product_id: str, quantity: int) -> None:
         r = httpx.patch(
             f"{settings.PRODUCT_SERVICE_URL}/products/{product_id}/stock",
             json={"quantity": -quantity},
+            headers={"x-internal-token": settings.INTERNAL_API_KEY},
             timeout=10.0,
         )
         r.raise_for_status()
@@ -64,6 +65,7 @@ def _restore_stock(product_id: str, quantity: int) -> None:
         httpx.patch(
             f"{settings.PRODUCT_SERVICE_URL}/products/{product_id}/stock",
             json={"quantity": quantity},
+            headers={"x-internal-token": settings.INTERNAL_API_KEY},
             timeout=10.0,
         )
     except Exception:

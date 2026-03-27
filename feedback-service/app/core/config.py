@@ -2,8 +2,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
-    SECRET_KEY: str
+    DATABASE_URL: str = "sqlite:///./feedback_db.db"
+    SECRET_KEY: str = "dev-shared-secret-change-me"
     ALGORITHM: str = "HS256"
     PRODUCT_SERVICE_URL: str = "http://localhost:8003"
     ORDER_SERVICE_URL: str = "http://localhost:8004"

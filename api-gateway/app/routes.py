@@ -53,6 +53,14 @@ async def _proxy(
     """
     # Strip the first path segment (the prefix) and forward the rest
     path = forward_path if forward_path is not None else request.url.path
+
+    # Keep internal notification dispatch endpoint private to service-to-service traffic.
+    if (
+        target_base == NOTIFICATION_SERVICE_URL
+        and path.startswith("/notifications/send")
+    ):
+        raise HTTPException(status_code=403, detail="Endpoint reserved for internal service calls")
+
     query = request.url.query
     url = f"{target_base}{path}"
     if query:

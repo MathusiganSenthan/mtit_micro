@@ -40,6 +40,8 @@ Each service has its own database and shares only the `SECRET_KEY` for JWT verif
 - Python 3.11+
 - PostgreSQL running locally (optional for local demo)
 
+> Python 3.13 is supported. Dependency versions are set to Python-3.13-compatible ranges.
+
 ---
 
 ## Database Setup
@@ -126,11 +128,26 @@ uvicorn app.main:app --port 8000 --reload
 ### Windows one-command start/stop
 
 ```powershell
+# First run: installs dependencies and creates .env files from .env.example
 ./scripts/run-all.ps1
+
+# Later runs (faster): skip re-installing dependencies
+./scripts/run-all.ps1 -SkipInstall
+
 ./scripts/stop-all.ps1
 ```
 
 Tables are created automatically on first startup via `Base.metadata.create_all()`.
+
+### Smoke test (optional)
+
+After all services are running, run:
+
+```powershell
+python ./scripts/smoke-test.py
+```
+
+This validates a full flow via gateway: register user -> create product -> place order.
 
 ---
 
@@ -258,6 +275,7 @@ curl -X POST http://localhost:8000/orders \
 
 | Method | Path                         | Auth | Description                      |
 |--------|------------------------------|------|----------------------------------|
+| POST   | /notifications/send          | Internal | Internal service dispatch (gateway blocked) |
 | GET    | /notifications/me            | Yes  | List my notifications            |
 | GET    | /notifications/{id}          | Yes  | Get one notification             |
 
